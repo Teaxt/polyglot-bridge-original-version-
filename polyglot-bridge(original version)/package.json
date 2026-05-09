@@ -1,6 +1,7 @@
 {
   "name": "polyglot-bridge",
-  "version": "1.0.0",
+  "version": "2.0.0",
+  "description": "多语者大模型翻译助手",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",

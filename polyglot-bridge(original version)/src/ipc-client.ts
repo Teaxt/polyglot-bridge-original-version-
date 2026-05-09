@@ -1,26 +1,30 @@
-// 安全获取 bridge，如果不存在则返回 mock 对象（避免崩溃）
-const getBridge = () => {
-  const b = (window as any).bridge;
-  if (!b) {
-    console.warn('⚠️ bridge 未注入，请确认是否在 Electron 窗口中打开应用');
-  }
-  return b || createMockBridge();
-};
+import type { BridgeAPI } from './types';
 
-function createMockBridge() {
+// Mock bridge for development outside Electron
+function createMockBridge(): BridgeAPI {
+  console.warn('⚠️ bridge 未注入，使用 Mock 模式');
   return {
-    getConfig: () => Promise.resolve({}),
+    getConfig: () => Promise.resolve({ apiProvider: '', apiKey: '', modelTag: '', sourceLang: 'auto', targetLang: 'zh-CN' }),
     saveConfig: () => Promise.resolve(),
     getProjects: () => Promise.resolve([]),
-    createProject: () => Promise.resolve({ id: 'mock' }),
+    createProject: (data) => Promise.resolve({ id: 'mock', ...data, createdAt: new Date().toISOString() }),
+    updateProject: () => Promise.resolve(),
     deleteProject: () => Promise.resolve(),
-    testConnection: () => Promise.resolve({ success: false, message: '未连接' }),
-    translateStream: () => {},
+    testConnection: () => Promise.resolve({ success: false, message: 'Mock模式，无法测试连接' }),
+    translate: () => Promise.resolve('[Mock] 翻译结果'),
+    translateStream: (_config, text, _prompt, callback) => {
+      const words = text.split('');
+      let i = 0;
+      const timer = setInterval(() => {
+        if (i < words.length) { callback(words[i]); i++; }
+        else { callback('[DONE]'); clearInterval(timer); }
+      }, 30);
+    },
     startCapture: () => {},
     stopCapture: () => {},
-    onCapturedText: () => {},
-    startRuntime: () => {}
+    onCapturedText: () => () => {},
+    startRuntime: () => {},
   };
 }
 
-export const bridge = getBridge();
+export const bridge: BridgeAPI = (window as any).bridge || createMockBridge();

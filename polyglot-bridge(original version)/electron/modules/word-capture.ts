@@ -4,22 +4,26 @@ let captureActive = false;
 let lastText = '';
 
 function startCapture() {
+  if (captureActive) return;
   captureActive = true;
+
   globalShortcut.register('Alt+T', () => {
-    // 模拟 Ctrl+C 取词（极简版，真实场景需键盘模拟库）
-    const text = clipboard.readText();
+    const text = clipboard.readText().trim();
     if (text && text !== lastText) {
       lastText = text;
       BrowserWindow.getAllWindows().forEach(win => {
-        if (!win.isDestroyed()) win.webContents.send('word-capture:on-text-captured', text);
+        if (!win.isDestroyed()) {
+          win.webContents.send('word-capture:on-text-captured', text);
+        }
       });
     }
   });
 }
 
 function stopCapture() {
+  if (!captureActive) return;
   captureActive = false;
-  globalShortcut.unregisterAll();
+  globalShortcut.unregister('Alt+T');
 }
 
 export function registerWordCaptureHandlers() {

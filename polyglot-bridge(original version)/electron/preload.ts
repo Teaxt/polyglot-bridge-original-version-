@@ -1,28 +1,36 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
 contextBridge.exposeInMainWorld('bridge', {
-  // Storage
+  // 配置
   getConfig: () => ipcRenderer.invoke('storage:get-config'),
   saveConfig: (config: any) => ipcRenderer.invoke('storage:save-config', config),
+  
+  // 项目
   getProjects: () => ipcRenderer.invoke('storage:project:list'),
   createProject: (data: any) => ipcRenderer.invoke('storage:project:create', data),
+  updateProject: (id: string, data: any) => ipcRenderer.invoke('storage:project:update', id, data),
   deleteProject: (id: string) => ipcRenderer.invoke('storage:project:delete', id),
-
+  
   // LLM
   testConnection: (config: any) => ipcRenderer.invoke('llm:test-connection', config),
-  translateStream: (config: any, text: string, callback: (chunk: string) => void) => {
-    const channel = `llm:stream-${Date.now()}`;
-    ipcRenderer.on(channel, (_, chunk) => callback(chunk));
-    ipcRenderer.send('llm:translate-stream', { config, text, channel });
+  translate: (config: any, text: string, prompt: string) => ipcRenderer.invoke('llm:translate', config, text, prompt),
+  translateStream: (config: any, text: string, prompt: string, callback: (chunk: string) => void) => {
+    const channel = `llm:stream-${Date.now()}-${Math.random()}`;
+    const handler = (_: any, chunk: string) => callback(chunk);
+    ipcRenderer.on(channel, handler);
+    ipcRenderer.send('llm:translate-stream', { config, text, prompt, channel });
+    return () => ipcRenderer.removeListener(channel, handler);
   },
-
-  // Word Capture
+  
+  // 划词翻译
   startCapture: () => ipcRenderer.send('word-capture:start'),
   stopCapture: () => ipcRenderer.send('word-capture:stop'),
   onCapturedText: (callback: (text: string) => void) => {
-    ipcRenderer.on('word-capture:on-text-captured', (_, text) => callback(text));
+    const handler = (_: any, text: string) => callback(text);
+    ipcRenderer.on('word-capture:on-text-captured', handler);
+    return () => ipcRenderer.removeListener('word-capture:on-text-captured', handler);
   },
-
-  // Project Runner
-  startRuntime: (projectId: string) => ipcRenderer.send('project:start-runtime', projectId)
+  
+  // 运行窗口
+  startRuntime: (projectId: string) => ipcRenderer.send('project:start-runtime', projectId),
 });
